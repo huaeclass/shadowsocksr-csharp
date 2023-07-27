@@ -202,6 +202,11 @@ namespace Shadowsocks.Obfs
             }
         }
 
+        public virtual void OnInitAuthData(UInt64 unixTimestamp)
+        {
+
+        }
+
         public void PackAuthData(byte[] data, int datalength, byte[] outdata, out int outlength)
         {
             const int authhead_len = 4 + 8 + 4 + 16 + 4;
@@ -572,7 +577,7 @@ namespace Shadowsocks.Obfs
             return _obfs;
         }
 
-        protected void InitDataSizeList()
+        protected virtual void InitDataSizeList()
         {
             xorshift128plus random = new xorshift128plus();
             random.init_from_bin(Server.key);
@@ -655,6 +660,271 @@ namespace Shadowsocks.Obfs
             if (datalength > 400)
                 return (int)(random.next() % 521);
             return (int)(random.next() % 1021);
+        }
+
+    }
+
+    class AuthChain_c : AuthChain_b
+    {
+        public AuthChain_c(string method)
+            : base(method)
+        {
+
+        }
+
+        private static Dictionary<string, int[]> _obfs = new Dictionary<string, int[]> {
+            {"auth_chain_c", new int[]{1, 0, 1}},
+        };
+
+        protected int[] data_size_list0 = null;
+
+        public static new List<string> SupportedObfs()
+        {
+            return new List<string>(_obfs.Keys);
+        }
+
+        public override Dictionary<string, int[]> GetObfs()
+        {
+            return _obfs;
+        }
+
+        protected override void InitDataSizeList()
+        {
+            xorshift128plus random = new xorshift128plus();
+            random.init_from_bin(Server.key);
+            int len = (int)(random.next() % (8 + 16) + (4 + 8));
+            List<int> data_list = new List<int>();
+            for (int i = 0; i < len; ++i)
+            {
+                data_list.Add((int)(random.next() % 2340 % 2040 % 1440));
+            }
+            data_list.Sort();
+            data_size_list0 = data_list.ToArray();
+        }
+
+        public override void SetServerInfo(ServerInfo serverInfo)
+        {
+            Server = serverInfo;
+            InitDataSizeList();
+        }
+
+        protected override int GetRandLen(int datalength, xorshift128plus random, byte[] last_hash)
+        {
+            int other_data_size = datalength + Server.overhead;
+
+            // 一定要在random使用前初始化，以保证服务器与客户端同步，保证包大小验证结果正确
+            random.init_from_bin(last_hash, datalength);
+            if (other_data_size >= data_size_list0[data_size_list0.Length - 1])
+            {
+                if (datalength >= 1440)
+                    return 0;
+                if (datalength > 1300)
+                    return (int)(random.next() % 31);
+                if (datalength > 900)
+                    return (int)(random.next() % 127);
+                if (datalength > 400)
+                    return (int)(random.next() % 521);
+                return (int)(random.next() % 1021);
+            }
+
+            int pos = FindPos(data_size_list0, other_data_size);
+            int final_pos = pos + (int)(random.next() % (ulong)(data_size_list0.Length - pos));
+            return data_size_list0[final_pos] - other_data_size;
+        }
+
+    }
+
+    class AuthChain_d : AuthChain_c
+    {
+        public AuthChain_d(string method)
+            : base(method)
+        {
+
+        }
+
+        private static Dictionary<string, int[]> _obfs = new Dictionary<string, int[]> {
+            {"auth_chain_d", new int[]{1, 0, 1}},
+        };
+
+        public static new List<string> SupportedObfs()
+        {
+            return new List<string>(_obfs.Keys);
+        }
+
+        public override Dictionary<string, int[]> GetObfs()
+        {
+            return _obfs;
+        }
+
+        protected void CheckAndPatchDataSize(List<int> data_list, xorshift128plus random)
+        {
+            if (data_list[data_list.Count - 1] < 1300 && data_list.Count < 64)
+            {
+                data_list.Add((int)(random.next() % 2340 % 2040 % 1440));
+                CheckAndPatchDataSize(data_list, random);
+            }
+        }
+
+        protected override void InitDataSizeList()
+        {
+            xorshift128plus random = new xorshift128plus();
+            random.init_from_bin(Server.key);
+            int len = (int)(random.next() % (8 + 16) + (4 + 8));
+            List<int> data_list = new List<int>();
+            for (int i = 0; i < len; ++i)
+            {
+                data_list.Add((int)(random.next() % 2340 % 2040 % 1440));
+            }
+            data_list.Sort();
+            int old_len = data_list.Count;
+            CheckAndPatchDataSize(data_list, random);
+            if (old_len != data_list.Count)
+            {
+                data_list.Sort();
+            }
+            data_size_list0 = data_list.ToArray();
+        }
+
+        public override void SetServerInfo(ServerInfo serverInfo)
+        {
+            Server = serverInfo;
+            InitDataSizeList();
+        }
+
+        protected override int GetRandLen(int datalength, xorshift128plus random, byte[] last_hash)
+        {
+            int other_data_size = datalength + Server.overhead;
+
+            if (other_data_size >= data_size_list0[data_size_list0.Length - 1])
+            {
+                return 0;
+            }
+
+            random.init_from_bin(last_hash, datalength);
+            int pos = FindPos(data_size_list0, other_data_size);
+            int final_pos = pos + (int)(random.next() % (ulong)(data_size_list0.Length - pos));
+            return data_size_list0[final_pos] - other_data_size;
+        }
+
+    }
+
+    class AuthChain_e : AuthChain_d
+    {
+        public AuthChain_e(string method)
+            : base(method)
+        {
+
+        }
+
+        private static Dictionary<string, int[]> _obfs = new Dictionary<string, int[]> {
+            {"auth_chain_e", new int[]{1, 0, 1}},
+        };
+
+        public static new List<string> SupportedObfs()
+        {
+            return new List<string>(_obfs.Keys);
+        }
+
+        public override Dictionary<string, int[]> GetObfs()
+        {
+            return _obfs;
+        }
+
+        protected override int GetRandLen(int datalength, xorshift128plus random, byte[] last_hash)
+        {
+            random.init_from_bin(last_hash, datalength);
+            int other_data_size = datalength + Server.overhead;
+
+            if (other_data_size >= data_size_list0[data_size_list0.Length - 1])
+            {
+                return 0;
+            }
+
+            int pos = FindPos(data_size_list0, other_data_size);
+            return data_size_list0[pos] - other_data_size;
+        }
+
+    }
+
+    class AuthChain_f : AuthChain_e
+    {
+        public AuthChain_f(string method)
+            : base(method)
+        {
+
+        }
+
+        private static Dictionary<string, int[]> _obfs = new Dictionary<string, int[]> {
+            {"auth_chain_f", new int[]{1, 0, 1}},
+        };
+
+        public static new List<string> SupportedObfs()
+        {
+            return new List<string>(_obfs.Keys);
+        }
+
+        public override Dictionary<string, int[]> GetObfs()
+        {
+            return _obfs;
+        }
+
+        protected UInt64 key_change_interval = 60 * 60 * 24;    // a day by second
+        protected UInt64 key_change_datetime_key;
+        protected List<byte> key_change_datetime_key_bytes = new List<byte>();
+
+        protected override void InitDataSizeList()
+        {
+            xorshift128plus random = new xorshift128plus();
+            byte[] newKey = new byte[Server.key.Length];
+            Server.key.CopyTo(newKey, 0);
+            for (int i = 0; i < 8; i++)
+            {
+                newKey[i] ^= key_change_datetime_key_bytes[i];
+            }
+            random.init_from_bin(newKey);
+            int len = (int)(random.next() % (8 + 16) + (4 + 8));
+            List<int> data_list = new List<int>();
+            for (int i = 0; i < len; ++i)
+            {
+                data_list.Add((int)(random.next() % 2340 % 2040 % 1440));
+            }
+            data_list.Sort();
+            int old_len = data_list.Count;
+            CheckAndPatchDataSize(data_list, random);
+            if (old_len != data_list.Count)
+            {
+                data_list.Sort();
+            }
+            data_size_list0 = data_list.ToArray();
+        }
+
+        public override void SetServerInfo(ServerInfo serverInfo)
+        {
+            Server = serverInfo;
+            string protocalParams = serverInfo.param;
+            if (protocalParams != "")
+            {
+                if (-1 != protocalParams.IndexOf("#", StringComparison.Ordinal))
+                {
+                    protocalParams = protocalParams.Split('#')[1];
+                }
+                UInt64 interval;
+                if (UInt64.TryParse(protocalParams, out interval))
+                {
+                    key_change_interval = interval;
+                }
+            }
+        }
+
+        public override void OnInitAuthData(UInt64 unixTimestamp)
+        {
+            key_change_datetime_key = unixTimestamp / key_change_interval;
+            for (int i = 7; i > -1; --i)
+            {
+                byte b = (byte)(key_change_datetime_key >> (8 * i) & 0xFF);
+                key_change_datetime_key_bytes.Add(b);
+            }
+            InitDataSizeList();
         }
 
     }
