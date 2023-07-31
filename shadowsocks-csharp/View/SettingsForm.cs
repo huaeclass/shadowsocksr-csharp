@@ -72,6 +72,7 @@ namespace Shadowsocks.View
             ListenGroup.Text = I18N.GetString(ListenGroup.Text);
             checkShareOverLan.Text = I18N.GetString(checkShareOverLan.Text);
             ProxyPortLabel.Text = I18N.GetString("Proxy Port");
+			buttonDefault.Text = I18N.GetString("Default Setting");
             ReconnectLabel.Text = I18N.GetString("Reconnect Times");
             TTLLabel.Text = I18N.GetString("TTL");
             labelTimeout.Text = I18N.GetString(labelTimeout.Text);

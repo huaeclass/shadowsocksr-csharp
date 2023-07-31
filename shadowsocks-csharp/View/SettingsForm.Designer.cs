@@ -658,7 +658,7 @@
             this.buttonDefault.Name = "buttonDefault";
             this.buttonDefault.Size = new System.Drawing.Size(109, 23);
             this.buttonDefault.TabIndex = 16;
-            this.buttonDefault.Text = "Set Default";
+            this.buttonDefault.Text = "Default Setting";
             this.buttonDefault.UseVisualStyleBackColor = true;
             this.buttonDefault.Click += new System.EventHandler(this.buttonDefault_Click);
             // 
